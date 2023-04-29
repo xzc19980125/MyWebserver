@@ -24,7 +24,7 @@ public:
 
     //每个连接中定义的缓冲区的读接口
     ssize_t readBuffer(int* saveErrno);
-    //每个连接中定义的缓冲区的读接口
+    //每个连接中定义的缓冲区的写接口
     ssize_t writeBuffer(int* saveErrno);
     //关闭连接
     void closeHTTPConn();

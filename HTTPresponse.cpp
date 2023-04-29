@@ -53,7 +53,7 @@ HTTPresponse::~HTTPresponse() {
 //初始化函数
 void HTTPresponse::init(const std::string& srcDir,std::string& path,bool isKeepAlive,int code){
     assert(srcDir != "");
-    if(mmFile_){unmapFile_();}
+    if(mmFile_){unmapFile_();}//若存在共享内存，先释放
     code_=code;
     isKeepAlive_ = isKeepAlive;
     path_=path;
@@ -64,7 +64,7 @@ void HTTPresponse::init(const std::string& srcDir,std::string& path,bool isKeepA
 
 //生成响应报文的主函数
 void HTTPresponse::makeResponse(Buffer& buffer){
-    //当请求的文件不存在或请求的是一个目录时，code_=404 not found
+    //当请求的文件不存在(获取不到文件信息)或请求的是一个目录时，code_=404 not found
     if(stat((srcDir_+path_).data(),&mmFileStat_) < 0 || S_ISDIR(mmFileStat_.st_mode)){
         code_ = 404;
     }
@@ -84,7 +84,7 @@ void HTTPresponse::makeResponse(Buffer& buffer){
     addResponseContent_(buffer);
 }
 
-//共享内存的扫尾函数
+//共享内存的扫尾工作，解绑共享内存，清除指针
 void HTTPresponse::unmapFile_(){
     if(mmFile_){
         munmap(mmFile_, mmFileStat_.st_size);
@@ -96,6 +96,7 @@ void HTTPresponse::unmapFile_(){
 void HTTPresponse::errorContent(Buffer& buffer,std::string message){
     std::string body;
     std::string status;
+    //编写出错信息的html
     body += "<html><title>Error</title>";
     body += "<body bgcolor=\"ffffff\">";
     if(CODE_STATUS.count(code_) == 1){
@@ -113,10 +114,11 @@ void HTTPresponse::errorContent(Buffer& buffer,std::string message){
 }
 
 
-//返回文件信息
+//返回文件内容
 char* HTTPresponse::file(){
     return mmFile_;
 }
+//返回文件大小
 size_t HTTPresponse::fileLen() const{
     return mmFileStat_.st_size;
 }
@@ -129,7 +131,7 @@ void HTTPresponse::addStateLine_(Buffer& buffer){
     if(CODE_STATUS.count(code_) == 1){
         status = CODE_STATUS.find(code_)->second;
     }
-    else{
+    else{//若出现除了200、400、403、404的状态码，均按照400处理
         code_=400;
         status = CODE_STATUS.find(400)->second;
     }
@@ -156,17 +158,17 @@ void HTTPresponse::addResponseContent_(Buffer& buffer){
         errorContent(buffer,"File NotFound!");
         return;
     }
-
+    //将srcFd文件映射到内存中
     int* mmRet = (int*)mmap(0,mmFileStat_.st_size,PROT_READ,MAP_PRIVATE,srcFd,0);
     if(*mmRet == -1){
         errorContent(buffer,"File NotFound!");
         return;
     }
+    //把文件内容存入mmFile_
     mmFile_ = (char*)mmRet;
     close(srcFd);
     buffer.append("Content-length: " + std::to_string(mmFileStat_.st_size)+"\r\n\r\n");
-    //TODO
-    //这里为什么没有发送数据体？
+
 }
 
 //出现4XX状态码时的函数
@@ -182,10 +184,13 @@ void HTTPresponse::errorHTML_(){
 
 //添加报文头时，需要得到文件类型信息，该函数即返回该信息
 std::string HTTPresponse::getFileType_(){
+    //获取文件后缀
     std::string::size_type idx = path_.find_last_of('.');
+    //若后缀无法解析，默认为text
     if(idx == std::string::npos){
         return "text/plain";
     }
+    //取出后缀
     std::string suffix = path_.substr(idx);
     if(SUFFIX_TYPE.count(suffix) == 1){
         return SUFFIX_TYPE.find(suffix)->second;

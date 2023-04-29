@@ -25,9 +25,9 @@ bool HTTPrequest::parse(Buffer& buff){
     std::cout<<"parse buff finish:"<<std::endl;
     //循环读取，分别读取method_,path_,version_,body_中需要的内容
     while(buff.readableBytes() && state_ != FINISH){
-        //查找curReadPtr到curWritePtr中是否存在CRLF，存在则返回其迭代器
+        //查找curReadPtr到curWritePtr中是否存在"\r\n"，存在则返回其迭代器
         const char* lineEnd = std::search(buff.curReadPtr(),buff.curWritePtrConst(),CRLF,CRLF+2);
-        //line为读指针到lineEnd的位置
+        //line为读指针到lineEnd的位置，也就是读了一行的内容
         std::string line(buff.curReadPtr(),lineEnd);
         //进入状态选择
         switch (state_) {
@@ -175,9 +175,9 @@ void HTTPrequest::parsePost_(){
                     // 具体来说，需要将其转换为对应的十进制数，并将其表示为字符。
                     // 将转换后的字符替换原来的字符即可。
                     num = convertHex(body_[i + 1])*16+ convertHex(body_[i+2]);
-                    //将两个字符表示的16进制数合并成一个10进制数，如'A'和'F'转换为10*16+15=175
+                    //将两个字符表示的16进制数合并成一个10进制数，如A和F转换为10*16+15=175
                     body_[i+2] = num%10 + '0';//将5转换为对应的ascii，存入
-                    body_[i+1] = num/10 + '0';//将17转换为对应的ascii，存入，则原本的'AF'变成了'175'
+                    body_[i+1] = num/10 + '0';//将17转换为对应的ascii，存入，则原本的AF变成了'175'
                     i += 2;
                     break;
                 case '&':

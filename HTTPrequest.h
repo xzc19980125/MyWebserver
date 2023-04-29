@@ -19,7 +19,7 @@ public:
         BODY,
         FINISH,
     };
-    
+
     HTTPrequest(){init();};
     ~HTTPrequest()=default;
     //初始化
@@ -41,7 +41,9 @@ private:
     void parseRequestHeader_(const std::string& line);//解析请求头
     void parseDataBody_(const std::string& line);//解析数据体
 
+    //解析请求的path内容
     void parsePath_();
+    //解析post表单内容
     void parsePost_();
 
     static int convertHex(char ch);

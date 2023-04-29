@@ -33,7 +33,7 @@ public:
     //初始化缓冲区
     void initPtr();
 
-    //保证将数据写入缓冲区
+    //保证数据能够写入缓冲区
     void ensureWriteable(size_t len);
     //将数据写入缓冲区
     void append(const char* str,size_t len);

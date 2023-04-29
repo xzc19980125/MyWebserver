@@ -6,6 +6,11 @@
 
 Buffer::Buffer(int initBuffersize):buffer_(initBuffersize),readPos_(0),writePos_(0){}
 
+
+//三段式存储
+//|_____________________|____________________________________|________________________________________|
+//BeginPtr         BeginPtr_() + readPos_               BeginPtr_() + writePos_             buffer_.size()
+
 //缓冲区中可以写入的字节数
 size_t Buffer::writeableBytes() const
 {
@@ -62,6 +67,7 @@ void Buffer::initPtr()
 }
 
 //保证缓冲区的大小足够写入数据
+//当存储内容超过申请的空间，则需要扩容
 void Buffer::ensureWriteable(size_t len)
 {
     if(writeableBytes() < len)
@@ -92,34 +98,37 @@ void Buffer::append(const Buffer& buffer)
     append(buffer.curReadPtr(),buffer.readableBytes());
 }
 
-//IO操作的读写接口
+//IO操作的读接口
 ssize_t Buffer::readFd(int fd,int* Errno)
 {
+    //设置一个较大的数组buff，来保证数据能够读完
     char buff[65535];
     struct iovec iov[2];
     const size_t writable = writeableBytes();
     //分段式写入
     iov[0].iov_base = BeginPtr_() + writePos_;
     iov[0].iov_len = writable;
+    //写不完的数据先放入buff里
     iov[1].iov_base = buff;
     iov[1].iov_len = sizeof(buff);
 
     const ssize_t len = readv(fd,iov,2);
-    if(len < 0)
+    if(len < 0)//len<0，出错
     {
         *Errno=errno;
     }
-    else if(static_cast<size_t>(len)<=writable)
+    else if(static_cast<size_t>(len)<=writable)//len<=writable表示不需要buff作为缓冲区来存储
     {
         writePos_ += len;
     }
-    else
+    else//需要buff作为缓冲区先进行存储，在原数组中进行扩容后再将buff中的内容存入
     {
         writePos_ = buffer_.size();
         append(buff,len-writable);
     }
     return len;
 }
+//IO操作的写接口
 ssize_t Buffer::writeFd(int fd,int* Errno)
 {
     size_t readSize = readableBytes();
@@ -153,11 +162,12 @@ const char* Buffer::BeginPtr_() const
 //用于缓冲区扩容
 void Buffer::allocateSpace(size_t len)
 {
+    
     if(writeableBytes()+readBytes() < len)
     {
-        buffer_.resize(writePos_+len);
+        buffer_.resize(writePos_+len);//申请额外len的空间
     }
-    else
+    else//若需要申请的空间比可写空间+已读空间(均为可写空间)小，则不需要申请，直接移动内容即可
     {
         size_t readable = readableBytes();
         std::copy(BeginPtr_() + readPos_,BeginPtr_() + writePos_,BeginPtr_());
