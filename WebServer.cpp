@@ -209,13 +209,13 @@ void WebServer::AddClient_(int fd,sockaddr_in addr){
 //处理监听到的读写事件
 void WebServer::DealRead_(HTTPconnection* client){
     assert(client);
-    extentTime_(client);
-    //需要bind成员函数时，第一个参数需要为该类的对象，这里用this
+    extentTime_(client);//刷新客户端超时时间
+    //需要bind成员函数时(非静态成员函数则需要传递this指针作为第一个参数)，第一个参数需要为该类的对象，这里用this
     threadpool_->submit(std::bind(&WebServer::OnRead,this,client));
 }
 void WebServer::DealWrite_(HTTPconnection* client){
     assert(client);
-    extentTime_(client);
+    extentTime_(client);//刷新客户端超时时间
     threadpool_->submit(std::bind(&WebServer::OnWrite,this,client));
 }
 
@@ -227,11 +227,11 @@ void WebServer::OnRead(HTTPconnection* client){
     int ret = -1;
     int readErrno = 0;
     ret = client->readBuffer(&readErrno);
-    if(ret<=0 && readErrno != EAGAIN){//没有阻塞，并且ret<0，说明读取完毕
+    if(ret<=0 && readErrno != EAGAIN){
         closeConn_(client);
         return;
     }
-    OnProcess(client);
+    OnProcess(client);//读取成功，监听写入操作
 }
 //写操作
 void WebServer::OnWrite(HTTPconnection* client){
@@ -241,7 +241,7 @@ void WebServer::OnWrite(HTTPconnection* client){
     ret = client->writeBuffer(&writeErrno);
     if(client->writeBytes() == 0){//写入完毕
         if(client->isKeepAlive()){
-            OnProcess(client);
+            OnProcess(client);//写入成功，切换监听读操作
             return;
         }
     }
@@ -261,11 +261,11 @@ void WebServer::OnProcess(HTTPconnection* client)
         epoller_->modFd(client->getFd(),connEvent_ | EPOLLOUT);//设置为监听写事件
     }
     else{
-        epoller_->modFd(client->getFd(),connEvent_ | EPOLLIN);
+        epoller_->modFd(client->getFd(),connEvent_ | EPOLLIN);//设置为监听读事件
     }
 }
 
-//超时处理
+//对有新任务来了的客户端进行时间刷新
 void WebServer::extentTime_(HTTPconnection* client){
     assert(client);
     if(timeoutMS_>0){
