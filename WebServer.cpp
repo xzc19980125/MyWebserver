@@ -108,7 +108,7 @@ bool WebServer::InitSocket_(){
         return false;
     }
 
-    //设置端口复用，
+    //设置端口复用
     int optval = 1;
     // SOL_SOCKET表示设置套接字级别的选项，SO_REUSEADDR表示设置为端口复用
     //(const void*)&optval和sizeof(int)表示设置该标志位为多少，以及设置参数的长度
