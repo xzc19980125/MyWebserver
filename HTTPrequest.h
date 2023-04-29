@@ -19,6 +19,7 @@ public:
         BODY,
         FINISH,
     };
+    
     HTTPrequest(){init();};
     ~HTTPrequest()=default;
     //初始化
