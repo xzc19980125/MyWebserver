@@ -8,7 +8,9 @@ WebServer::WebServer(
         int port,int trigMode,int timeoutMS,bool optLinger,int threadNum):
         port_(port),openLinger_(optLinger),timeoutMS_(timeoutMS),isClose_(false),
         timer_(new TimerManager()),threadpool_(new ThreadPool(threadNum)),epoller_(new Epoller())
+        //创建了一个定时器对象、一个线程池对象、一个epoll反应堆对象
 {
+    //获取工作目录
     srcDir_ = getcwd(nullptr,256);//获取当前目录，nullptr表示不指定返回内容的缓存区，256表示缓冲区大小
     assert(srcDir_);
     strncat(srcDir_,"/resources/",16);
@@ -16,8 +18,8 @@ WebServer::WebServer(
     HTTPconnection::userCount = 0;//初始化连接用户数量为0
     HTTPconnection::srcDir = srcDir_;//将工作目录传入HTTPconnection
 
-    InitEventMode_(trigMode);//设置读写事件和监听事件为ET事件
-    if(!InitSocket_()){isClose_ = true;}
+    InitEventMode_(trigMode);//设置读写事件和监听事件的模式(在这里可以设置为ET模式)
+    if(!InitSocket_()){isClose_ = true;}//初始化套接字，若初始化失败，则将isClose设置为true
 }
 
 
